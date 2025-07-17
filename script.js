@@ -16,7 +16,7 @@ async function fetchFixtures() {
   const options = {
     method: 'GET',
     headers: {
-      'x-apisports-key': API_KEY
+      'x-apisports-key': 02a00468ecc46837206bb0c35f091625
     }
   };
 
@@ -39,7 +39,7 @@ async function fetchLastMatches(teamId) {
   const options = {
     method: 'GET',
     headers: {
-      'x-apisports-key': API_KEY
+      'x-apisports-key': 02a00468ecc46837206bb0c35f091625
     }
   };
   try {
