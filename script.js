@@ -1,97 +1,51 @@
-const API_KEY = '1f03370e05msh97afed5228d91edp11a26cjsn38eed54f4fea';
-const API_HOST = 'api-football-v1.p.rapidapi.com';
-const BOOKMAKER_ID = 5; // Bet365
-const PAGE = 1;
+// script.js - Using API-FOOTBALL (api-football.com)
 
-async function fetchOdds() {
-  const url = `https://${API_HOST}/v2/odds/bookmaker/${BOOKMAKER_ID}?page=${PAGE}`;
-  const options = {
-    method: 'GET',
-    headers: {
-      'x-rapidapi-key': API_KEY,
-      'x-rapidapi-host': API_HOST
-    }
-  };
+const API_KEY = '02a00468ecc46837206bb0c35f091625';
+const BASE_URL = 'https://v3.football.api-sports.io';
+
+async function fetchLiveMatches() {
+  const url = `${BASE_URL}/fixtures?live=all`;
 
   try {
-    const response = await fetch(url, options);
-    const data = await response.json();
-
-    if (!data.api || !data.api.fixtures || data.api.fixtures.length === 0) {
-      throw new Error("No odds data returned.");
-    }
-
-    renderOdds(data.api.fixtures);
-  } catch (error) {
-    document.getElementById("oddsBox").innerHTML = "⚠️ Failed to load odds.";
-    console.error("Fetch error:", error);
-  }
-}
-
-function calculateConfidence(oddsList) {
-  const avgOdd = oddsList.reduce((sum, val) => sum + parseFloat(val.odd), 0) / oddsList.length;
-  if (avgOdd <= 1.8) return 'High';
-  if (avgOdd <= 2.2) return 'Medium';
-  return 'Low';
-}
-
-function renderOdds(fixtures) {
-  const oddsBox = document.getElementById("oddsBox");
-  oddsBox.innerHTML = '<h3>SureKick AI: Bet365 Odds with Confidence & Accumulators</h3>';
-
-  const accumulator = [];
-
-  fixtures.forEach(fixture => {
-    const home = fixture.teams.home;
-    const away = fixture.teams.away;
-    const league = fixture.league.name;
-    const match = `${home} vs ${away}`;
-
-    const bets = fixture.bookmakers[0]?.bets || [];
-
-    const filteredBets = bets.filter(bet =>
-      bet.label === "Match Winner" || bet.label.includes("Over/Under 2.5")
-    );
-
-    let oddsContent = '';
-    let selectionConfidence = [];
-
-    filteredBets.forEach(bet => {
-      const highOdds = bet.values.filter(value => parseFloat(value.odd) >= 1.8);
-      if (highOdds.length > 0) {
-        const conf = calculateConfidence(highOdds);
-        selectionConfidence.push(conf);
-        oddsContent += `<li><strong>${bet.label}</strong>: `;
-        oddsContent += highOdds.map(val => `${val.value} @ ${val.odd}`).join(', ');
-        oddsContent += `</li>`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-apisports-key': API_KEY
       }
     });
 
-    if (oddsContent) {
-      const avgConf = selectionConfidence.includes('Low') ? 'Low' : (selectionConfidence.includes('Medium') ? 'Medium' : 'High');
-      if (avgConf === 'High') {
-        accumulator.push(match);
-      }
+    const result = await response.json();
+    renderMatches(result.response);
+  } catch (error) {
+    document.getElementById("oddsBox").innerHTML = "⚠️ Failed to load live matches.";
+    console.error(error);
+  }
+}
 
-      oddsBox.innerHTML += `
-        <div class="card">
-          <strong>${match}</strong><br/>
-          <small>${league}</small><br/>
-          <ul>${oddsContent}</ul>
-          <p>Confidence: <span class="${avgConf.toLowerCase()}">${avgConf}</span></p>
-        </div>
-      `;
-    }
-  });
+function renderMatches(matches) {
+  const oddsBox = document.getElementById("oddsBox");
+  if (!matches || matches.length === 0) {
+    oddsBox.innerHTML = "No live matches currently.";
+    return;
+  }
 
-  if (accumulator.length > 0) {
+  oddsBox.innerHTML = '<h3>Live Football Matches</h3>';
+
+  matches.forEach(match => {
+    const teams = `${match.teams.home.name} vs ${match.teams.away.name}`;
+    const score = `${match.goals.home} - ${match.goals.away}`;
+    const league = match.league.name;
+    const time = match.fixture.status.elapsed;
+
     oddsBox.innerHTML += `
-      <div class="accumulator">
-        <h4>🔥 Daily Accumulator (High Confidence)</h4>
-        <ul>${accumulator.map(match => `<li>${match}</li>`).join('')}</ul>
+      <div class='card'>
+        <strong>${teams}</strong><br/>
+        <span>Score: ${score}</span><br/>
+        <span>League: ${league}</span><br/>
+        <span>Time: ${time}'</span>
       </div>
     `;
-  }
+  });
 }
 
 function switchTab(tabId) {
@@ -102,7 +56,5 @@ function switchTab(tabId) {
 }
 
 window.onload = () => {
-  fetchOdds();
+  fetchLiveMatches();
 };
-
-
