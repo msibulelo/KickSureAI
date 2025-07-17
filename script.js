@@ -28,9 +28,18 @@ async function fetchOdds() {
   }
 }
 
+function calculateConfidence(oddsList) {
+  const avgOdd = oddsList.reduce((sum, val) => sum + parseFloat(val.odd), 0) / oddsList.length;
+  if (avgOdd <= 1.8) return 'High';
+  if (avgOdd <= 2.2) return 'Medium';
+  return 'Low';
+}
+
 function renderOdds(fixtures) {
   const oddsBox = document.getElementById("oddsBox");
-  oddsBox.innerHTML = '<h3>SureKick AI: Bet365 Odds (1X2 & Over/Under 2.5)</h3>';
+  oddsBox.innerHTML = '<h3>SureKick AI: Bet365 Odds with Confidence & Accumulators</h3>';
+
+  const accumulator = [];
 
   fixtures.forEach(fixture => {
     const home = fixture.teams.home;
@@ -40,15 +49,18 @@ function renderOdds(fixtures) {
 
     const bets = fixture.bookmakers[0]?.bets || [];
 
-    // Filter for 1X2 or Over/Under 2.5
     const filteredBets = bets.filter(bet =>
       bet.label === "Match Winner" || bet.label.includes("Over/Under 2.5")
     );
 
     let oddsContent = '';
+    let selectionConfidence = [];
+
     filteredBets.forEach(bet => {
       const highOdds = bet.values.filter(value => parseFloat(value.odd) >= 1.8);
       if (highOdds.length > 0) {
+        const conf = calculateConfidence(highOdds);
+        selectionConfidence.push(conf);
         oddsContent += `<li><strong>${bet.label}</strong>: `;
         oddsContent += highOdds.map(val => `${val.value} @ ${val.odd}`).join(', ');
         oddsContent += `</li>`;
@@ -56,15 +68,30 @@ function renderOdds(fixtures) {
     });
 
     if (oddsContent) {
+      const avgConf = selectionConfidence.includes('Low') ? 'Low' : (selectionConfidence.includes('Medium') ? 'Medium' : 'High');
+      if (avgConf === 'High') {
+        accumulator.push(match);
+      }
+
       oddsBox.innerHTML += `
         <div class="card">
           <strong>${match}</strong><br/>
           <small>${league}</small><br/>
           <ul>${oddsContent}</ul>
+          <p>Confidence: <span class="${avgConf.toLowerCase()}">${avgConf}</span></p>
         </div>
       `;
     }
   });
+
+  if (accumulator.length > 0) {
+    oddsBox.innerHTML += `
+      <div class="accumulator">
+        <h4>🔥 Daily Accumulator (High Confidence)</h4>
+        <ul>${accumulator.map(match => `<li>${match}</li>`).join('')}</ul>
+      </div>
+    `;
+  }
 }
 
 function switchTab(tabId) {
