@@ -1,10 +1,135 @@
-body { font-family: sans-serif; background-color: #101010; color: #fff; margin: 0; padding: 0; }
-.header { background-color: #0f2027; padding: 20px; font-size: 24px; text-align: center; color: #00ffc3; }
-.tabs { display: flex; background-color: #1a1a1a; }
-.tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; color: #aaa; border-bottom: 2px solid transparent; }
-.tab.active { color: #00ffc3; border-bottom: 2px solid #00ffc3; }
-.content { display: none; padding: 20px; }
-.content.active { display: block; }
-.card { background-color: #1f1f1f; padding: 15px; margin-bottom: 12px; border-radius: 8px; }
-ul { padding-left: 20px; }
-li { margin-bottom: 4px; }
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SureKick AI</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(145deg, #0f2027, #203a43, #2c5364);
+      color: #f0f0f0;
+    }
+
+    header {
+      background-color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+
+    header img {
+      height: 40px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      color: #00ffcc;
+    }
+
+    nav {
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    .tab {
+      display: inline-block;
+      padding: 0.8rem 1.5rem;
+      cursor: pointer;
+      background: #333;
+      margin: 0 0.5rem;
+      border-radius: 30px;
+      color: #ccc;
+      transition: background 0.3s;
+    }
+
+    .tab:hover,
+    .tab.active {
+      background: #00ffcc;
+      color: #000;
+    }
+
+    .content {
+      display: none;
+      padding: 2rem;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    .content.active {
+      display: block;
+    }
+
+    .card {
+      background: #1e1e2f;
+      margin: 1rem auto;
+      padding: 1rem;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0, 255, 204, 0.1);
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    h3,
+    h4 {
+      color: #00ffcc;
+    }
+
+    ul {
+      padding-left: 1.2rem;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <img src="logo.png" alt="SureKick AI Logo" />
+    <h1>SureKick AI</h1>
+  </header>
+
+  <nav>
+    <div class="tab active" onclick="switchTab('home')">Home</div>
+    <div class="tab" onclick="switchTab('about')">About</div>
+  </nav>
+
+  <div id="home" class="content active">
+    <div id="oddsBox">
+      <p>Loading predictions...</p>
+    </div>
+  </div>
+
+  <div id="about" class="content">
+    <div class="card">
+      <h3>About SureKick AI</h3>
+      <p>
+        SureKick AI is a cutting-edge football prediction tool that uses real-time data,
+        recent form, and intelligent algorithms to provide smart betting insights.
+        Get daily updated match predictions, high-confidence accumulators, and
+        a beautifully designed experience tailored for modern users.
+      </p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
