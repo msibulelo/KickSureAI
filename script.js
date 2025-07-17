@@ -1,8 +1,8 @@
 // SureKick AI - Updated Script for Predictions and Accumulators
 
 const API_KEY = '02a00468ecc46837206bb0c35f091625';
-const API_HOST = 'https://v3.football.api-sports.io';
-const DAYS_AHEAD = 30;
+const API_HOST = 'https://www.api-football.com/';
+const DAYS_AHEAD = 15;
 
 async function fetchFixtures() {
   const now = new Date();
