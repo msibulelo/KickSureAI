@@ -16,36 +16,54 @@ async function fetchOdds() {
   try {
     const response = await fetch(url, options);
     const data = await response.json();
+
+    if (!data.api || !data.api.fixtures || data.api.fixtures.length === 0) {
+      throw new Error("No odds data returned.");
+    }
+
     renderOdds(data.api.fixtures);
   } catch (error) {
     document.getElementById("oddsBox").innerHTML = "⚠️ Failed to load odds.";
-    console.error(error);
+    console.error("Fetch error:", error);
   }
 }
 
 function renderOdds(fixtures) {
   const oddsBox = document.getElementById("oddsBox");
-  oddsBox.innerHTML = '<h3>Live Odds from Bet365</h3>';
-
-  if (!fixtures || fixtures.length === 0) {
-    oddsBox.innerHTML += "<p>No odds data available.</p>";
-    return;
-  }
+  oddsBox.innerHTML = '<h3>SureKick AI: Bet365 Odds (1X2 & Over/Under 2.5)</h3>';
 
   fixtures.forEach(fixture => {
-    oddsBox.innerHTML += `
-      <div class="card">
-        <strong>${fixture.teams.home} vs ${fixture.teams.away}</strong><br/>
-        <small>${fixture.league.name}</small><br/>
-        <ul>
-          ${fixture.bookmakers[0]?.bets.map(bet => `
-            <li><strong>${bet.label}</strong>: 
-              ${bet.values.map(value => `${value.value} @ ${value.odd}`).join(', ')}
-            </li>
-          `).join('')}
-        </ul>
-      </div>
-    `;
+    const home = fixture.teams.home;
+    const away = fixture.teams.away;
+    const league = fixture.league.name;
+    const match = `${home} vs ${away}`;
+
+    const bets = fixture.bookmakers[0]?.bets || [];
+
+    // Filter for 1X2 or Over/Under 2.5
+    const filteredBets = bets.filter(bet =>
+      bet.label === "Match Winner" || bet.label.includes("Over/Under 2.5")
+    );
+
+    let oddsContent = '';
+    filteredBets.forEach(bet => {
+      const highOdds = bet.values.filter(value => parseFloat(value.odd) >= 1.8);
+      if (highOdds.length > 0) {
+        oddsContent += `<li><strong>${bet.label}</strong>: `;
+        oddsContent += highOdds.map(val => `${val.value} @ ${val.odd}`).join(', ');
+        oddsContent += `</li>`;
+      }
+    });
+
+    if (oddsContent) {
+      oddsBox.innerHTML += `
+        <div class="card">
+          <strong>${match}</strong><br/>
+          <small>${league}</small><br/>
+          <ul>${oddsContent}</ul>
+        </div>
+      `;
+    }
   });
 }
 
@@ -59,4 +77,5 @@ function switchTab(tabId) {
 window.onload = () => {
   fetchOdds();
 };
+
 
