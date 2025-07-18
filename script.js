@@ -1,92 +1,131 @@
-<!-- SureKick AI Full App with Smart Limited Logic and Fixed API Access -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SureKick AI</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Orbitron', sans-serif;
-      background-color: #0a0f1a;
-      color: #e0e0e0;
-    }
-    header {
-      background-color: #121b2d;
-      text-align: center;
-      padding: 1em;
-      font-size: 1.8em;
-      font-weight: bold;
-      color: #00ffcc;
-    }
-    nav {
-      display: flex;
-      justify-content: space-around;
-      background: #1d263b;
-      padding: 0.5em;
-    }
-    nav button {
-      background: none;
-      border: none;
-      color: #ffffff;
-      font-size: 1em;
-      cursor: pointer;
-    }
-    nav button.active {
-      border-bottom: 2px solid #00ffcc;
-    }
-    .content {
-      display: none;
-      padding: 1em;
-    }
-    .content.active {
-      display: block;
-    }
-    .card {
-      background-color: #1a2238;
-      margin: 1em 0;
-      padding: 1em;
-      border-radius: 10px;
-      box-shadow: 0 0 10px #00ffcc44;
-    }
-    ul {
-      padding-left: 20px;
-    }
-    .loading {
-      text-align: center;
-      padding: 2em;
-      font-size: 1.2em;
-      color: #00ffaa;
-    }
-  </style>
-</head>
-<body>
-  <header>SureKick AI</header>
-  <nav>
-    <button onclick="switchTab('live')" class="tab active">Live Scores</button>
-    <button onclick="switchTab('daily')" class="tab">Daily Tips</button>
-    <button onclick="switchTab('biweekly')" class="tab">Bi-Weekly 25–40 Odds</button>
-    <button onclick="switchTab('mega')" class="tab">Weekly 1500 Odds</button>
-  </nav>
+// SureKick AI - script.js
 
-  <div id="live" class="content active">
-    <div id="liveBox" class="loading">Loading live scores...</div>
-  </div>
+const API_KEY = "9f0af8032a630bf720551c3c38b78057";
+const BASE_URL = "https://v3.football.api-sports.io";
 
-  <div id="daily" class="content">
-    <div id="dailyBox" class="loading">Loading daily tips...</div>
-  </div>
+const headers = {
+  "x-apisports-key": API_KEY,
+};
 
-  <div id="biweekly" class="content">
-    <div id="biweeklyBox" class="loading">Loading bi-weekly accumulator...</div>
-  </div>
+const tabs = ["live", "daily", "biweekly", "weekly"];
 
-  <div id="mega" class="content">
-    <div id="megaBox" class="loading">Loading mega accumulator...</div>
-  </div>
+function switchTab(tabId) {
+  tabs.forEach((tab) => {
+    document.getElementById(tab).classList.remove("active");
+    document.querySelector(`button.tab[onclick*='${tab}']`).classList.remove("active");
+  });
+  document.getElementById(tabId).classList.add("active");
+  document.querySelector(`button.tab[onclick*='${tabId}']`).classList.add("active");
+}
 
-  <script src="script.js"></script>
-</body>
-</html>
+document.addEventListener("DOMContentLoaded", () => {
+  fetchLiveScores();
+  fetchDailyTips();
+  fetchBiWeeklyAccumulator();
+  fetchWeeklyAccumulator();
+});
+
+// Fetch live scores
+function fetchLiveScores() {
+  const url = `${BASE_URL}/fixtures?live=all`;
+  fetch(url, { headers })
+    .then((res) => res.json())
+    .then((data) => {
+      const box = document.getElementById("liveBox");
+      if (!data.response || data.response.length === 0) {
+        box.innerHTML = "No live games currently.";
+        return;
+      }
+      box.innerHTML = data.response
+        .map((match) => {
+          const teams = match.teams;
+          return `<div class="match">
+            <strong>${teams.home.name}</strong> ${match.goals.home} - ${match.goals.away} <strong>${teams.away.name}</strong>
+            <br/><small>Status: ${match.fixture.status.long}</small>
+          </div>`;
+        })
+        .join("");
+    })
+    .catch(() => {
+      document.getElementById("liveBox").innerText = "Failed to load live scores.";
+    });
+}
+
+// Get fixtures for today + next 3 days
+function getUpcomingFixtures(callback) {
+  const today = new Date();
+  const endDate = new Date();
+  endDate.setDate(today.getDate() + 3);
+
+  const from = today.toISOString().split("T")[0];
+  const to = endDate.toISOString().split("T")[0];
+
+  const url = `${BASE_URL}/fixtures?date=${from}&to=${to}`;
+
+  fetch(url, { headers })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.response && data.response.length > 0) {
+        callback(data.response);
+      } else {
+        callback([]);
+      }
+    })
+    .catch(() => callback([]));
+}
+
+// Generate prediction logic (dummy scoring)
+function smartPredict(fixtures, oddsTarget = 3) {
+  let confidentGames = fixtures.filter((f) => {
+    const form = f.teams.home?.form || "WWDLW";
+    const wins = (form.match(/W/g) || []).length;
+    return wins >= 3 && f.teams.away?.form?.includes("L");
+  });
+  return confidentGames.slice(0, 5).map((match) => {
+    return {
+      text: `${match.teams.home.name} to win vs ${match.teams.away.name}`,
+      fixture: match,
+    };
+  });
+}
+
+function fetchDailyTips() {
+  getUpcomingFixtures((fixtures) => {
+    const dailyTips = smartPredict(fixtures);
+    const box = document.getElementById("dailyBox");
+    if (dailyTips.length === 0) {
+      box.innerHTML = "No strong daily tips available.";
+      return;
+    }
+    box.innerHTML = dailyTips.map((tip) => `<div class='tip'>✅ ${tip.text}</div>`).join("");
+  });
+}
+
+function fetchBiWeeklyAccumulator() {
+  getUpcomingFixtures((fixtures) => {
+    const filtered = fixtures.filter((f) => {
+      const date = new Date(f.fixture.date);
+      const day = date.getUTCDay();
+      return [2, 3, 4, 5, 6, 0].includes(day); // Tue - Sun
+    });
+    const accTips = smartPredict(filtered, 40);
+    const box = document.getElementById("biweeklyBox");
+    if (accTips.length === 0) {
+      box.innerHTML = "No bi-weekly accumulator found.";
+      return;
+    }
+    box.innerHTML = accTips.map((tip) => `<div class='tip'>🔥 ${tip.text}</div>`).join("");
+  });
+}
+
+function fetchWeeklyAccumulator() {
+  getUpcomingFixtures((fixtures) => {
+    const megaTips = smartPredict(fixtures, 1500);
+    const box = document.getElementById("weeklyBox");
+    if (megaTips.length === 0) {
+      box.innerHTML = "No weekly mega tips found.";
+      return;
+    }
+    box.innerHTML = megaTips.map((tip) => `<div class='tip'>💥 ${tip.text}</div>`).join("");
+  });
+}
