@@ -1,135 +1,92 @@
-// Updated script.js using only accessible data from API-Football Free Plan
-
-const apiKey = "9f0af8032a630bf720551c3c38b78057";
-const apiHost = "https://v3.football.api-sports.io";
-
-// Helper to fetch from the API
-async function fetchFromAPI(endpoint) {
-  try {
-    const res = await fetch(`${apiHost}${endpoint}`, {
-      method: "GET",
-      headers: {
-        "x-apisports-key": apiKey
-      }
-    });
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    console.error("API Error:", err);
-    return null;
-  }
-}
-
-// Live Games (Page 1)
-async function loadLiveGames() {
-  const data = await fetchFromAPI("/fixtures?live=all");
-  const container = document.getElementById("liveGames");
-  container.innerHTML = "";
-  if (data && data.response.length) {
-    data.response.forEach(fx => {
-      const match = `${fx.teams.home.name} ${fx.goals.home} - ${fx.goals.away} ${fx.teams.away.name}`;
-      const div = document.createElement("div");
-      div.textContent = match;
-      container.appendChild(div);
-    });
-  } else {
-    container.textContent = "No live games at the moment.";
-  }
-}
-
-// Predictions (Daily)
-async function loadDailyPredictions() {
-  const container = document.getElementById("dailyPredictions");
-  container.innerHTML = "Loading predictions...";
-
-  const today = new Date().toISOString().split("T")[0];
-  const data = await fetchFromAPI(`/fixtures?date=${today}`);
-
-  if (!data || !data.response.length) {
-    container.textContent = "No fixtures for today.";
-    return;
-  }
-
-  const predictions = data.response.slice(0, 5).map(match => {
-    const { teams, league } = match;
-    return {
-      match: `${teams.home.name} vs ${teams.away.name}`,
-      tip: Math.random() > 0.5 ? "Double Chance Home or Draw" : "Over 1.5 Goals",
-      league: league.name
-    };
-  });
-
-  container.innerHTML = "";
-  predictions.forEach(pred => {
-    const div = document.createElement("div");
-    div.innerHTML = `<strong>${pred.match}</strong> <br><em>${pred.tip}</em> <br><small>${pred.league}</small><hr>`;
-    container.appendChild(div);
-  });
-}
-
-// Bi-Weekly 25–40 Odds Accumulator (Page 3)
-async function loadMidweekAccumulator() {
-  const container = document.getElementById("biWeeklyAccumulator");
-  container.innerHTML = "Loading...";
-
-  const days = [1, 2, 5, 6]; // Tue, Wed, Sat, Sun
-  const today = new Date();
-  const fixtures = [];
-
-  for (let i = 1; i <= 3; i++) {
-    const date = new Date();
-    date.setDate(today.getDate() + i);
-    if (days.includes(date.getDay())) {
-      const d = date.toISOString().split("T")[0];
-      const result = await fetchFromAPI(`/fixtures?date=${d}`);
-      if (result?.response) fixtures.push(...result.response);
+<!-- SureKick AI Full App with Smart Limited Logic and Fixed API Access -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SureKick AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Orbitron', sans-serif;
+      background-color: #0a0f1a;
+      color: #e0e0e0;
     }
-  }
+    header {
+      background-color: #121b2d;
+      text-align: center;
+      padding: 1em;
+      font-size: 1.8em;
+      font-weight: bold;
+      color: #00ffcc;
+    }
+    nav {
+      display: flex;
+      justify-content: space-around;
+      background: #1d263b;
+      padding: 0.5em;
+    }
+    nav button {
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    nav button.active {
+      border-bottom: 2px solid #00ffcc;
+    }
+    .content {
+      display: none;
+      padding: 1em;
+    }
+    .content.active {
+      display: block;
+    }
+    .card {
+      background-color: #1a2238;
+      margin: 1em 0;
+      padding: 1em;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ffcc44;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    .loading {
+      text-align: center;
+      padding: 2em;
+      font-size: 1.2em;
+      color: #00ffaa;
+    }
+  </style>
+</head>
+<body>
+  <header>SureKick AI</header>
+  <nav>
+    <button onclick="switchTab('live')" class="tab active">Live Scores</button>
+    <button onclick="switchTab('daily')" class="tab">Daily Tips</button>
+    <button onclick="switchTab('biweekly')" class="tab">Bi-Weekly 25–40 Odds</button>
+    <button onclick="switchTab('mega')" class="tab">Weekly 1500 Odds</button>
+  </nav>
 
-  const picks = fixtures.slice(0, 10).map(match => {
-    const chance = Math.random() > 0.5 ? "Home Win or Draw" : "Over 2.5 Goals";
-    return `${match.teams.home.name} vs ${match.teams.away.name}: ${chance}`;
-  });
+  <div id="live" class="content active">
+    <div id="liveBox" class="loading">Loading live scores...</div>
+  </div>
 
-  container.innerHTML = picks.length ? picks.join("<hr>") : "No suitable matches found.";
-}
+  <div id="daily" class="content">
+    <div id="dailyBox" class="loading">Loading daily tips...</div>
+  </div>
 
-// Weekly 1500 Odds Accumulator (Page 4)
-async function loadMegaAccumulator() {
-  const container = document.getElementById("megaAccumulator");
-  container.innerHTML = "Loading mega accumulator...";
+  <div id="biweekly" class="content">
+    <div id="biweeklyBox" class="loading">Loading bi-weekly accumulator...</div>
+  </div>
 
-  const fixtures = [];
-  for (let i = 1; i <= 7; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() + i);
-    const d = date.toISOString().split("T")[0];
-    const result = await fetchFromAPI(`/fixtures?date=${d}`);
-    if (result?.response) fixtures.push(...result.response);
-  }
+  <div id="mega" class="content">
+    <div id="megaBox" class="loading">Loading mega accumulator...</div>
+  </div>
 
-  const picks = fixtures.slice(0, 20).map(match => {
-    const tip = Math.random() > 0.6 ? "Over 1.5 Goals" : "Double Chance Away";
-    return `${match.teams.home.name} vs ${match.teams.away.name}: ${tip}`;
-  });
-
-  container.innerHTML = picks.length ? picks.join("<hr>") : "No weekly accumulator matches found.";
-}
-
-// Load correct page content
-function loadPage(pageId) {
-  document.querySelectorAll(".page").forEach(p => p.style.display = "none");
-  document.getElementById(pageId).style.display = "block";
-  if (pageId === "livePage") loadLiveGames();
-  if (pageId === "dailyPage") loadDailyPredictions();
-  if (pageId === "biWeeklyPage") loadMidweekAccumulator();
-  if (pageId === "megaPage") loadMegaAccumulator();
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  loadPage("livePage");
-  document.getElementById("navLive").onclick = () => loadPage("livePage");
-  document.getElementById("navDaily").onclick = () => loadPage("dailyPage");
-  document.getElementById("navBiWeekly").onclick = () => loadPage("biWeeklyPage");
-  document.getElementById("navMega").onclick = () => loadPage("megaPage");
-});
+  <script src="script.js"></script>
+</body>
+</html>
