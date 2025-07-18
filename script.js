@@ -1,131 +1,103 @@
-// SureKick AI - script.js
-
-const API_KEY = "9f0af8032a630bf720551c3c38b78057";
-const BASE_URL = "https://v3.football.api-sports.io";
-
+const apiKey = '9f0af8032a630bf720551c3c38b78057';
 const headers = {
-  "x-apisports-key": API_KEY,
+  'X-RapidAPI-Key': apiKey,
+  'X-RapidAPI-Host': 'v3.football.api-sports.io',
 };
 
-const tabs = ["live", "daily", "biweekly", "weekly"];
+const today = new Date();
+const getDateString = (offsetDays) => {
+  const date = new Date();
+  date.setDate(today.getDate() + offsetDays);
+  return date.toISOString().split('T')[0];
+};
 
-function switchTab(tabId) {
-  tabs.forEach((tab) => {
-    document.getElementById(tab).classList.remove("active");
-    document.querySelector(`button.tab[onclick*='${tab}']`).classList.remove("active");
-  });
-  document.getElementById(tabId).classList.add("active");
-  document.querySelector(`button.tab[onclick*='${tabId}']`).classList.add("active");
+async function fetchAPI(endpoint) {
+  try {
+    const res = await fetch(`https://v3.football.api-sports.io/${endpoint}`, { headers });
+    const data = await res.json();
+    return data.response || [];
+  } catch (error) {
+    console.error('API error:', error);
+    return [];
+  }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  fetchLiveScores();
-  fetchDailyTips();
-  fetchBiWeeklyAccumulator();
-  fetchWeeklyAccumulator();
-});
+function showLoading(id, message = 'Loading...') {
+  document.getElementById(id).innerHTML = `<p>${message}</p>`;
+}
 
-// Fetch live scores
-function fetchLiveScores() {
-  const url = `${BASE_URL}/fixtures?live=all`;
-  fetch(url, { headers })
-    .then((res) => res.json())
-    .then((data) => {
-      const box = document.getElementById("liveBox");
-      if (!data.response || data.response.length === 0) {
-        box.innerHTML = "No live games currently.";
-        return;
+function switchTab(tabId, e) {
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  e.target.classList.add('active');
+}
+
+function getConfidence(home, away) {
+  const diff = home - away;
+  if (diff > 1.5) return 90;
+  if (diff > 1) return 80;
+  if (diff > 0.5) return 70;
+  return 60;
+}
+
+function formatPrediction(match, prediction, confidence) {
+  return `
+    <div class="matchCard">
+      <h4>${match.teams.home.name} vs ${match.teams.away.name}</h4>
+      <p><strong>Tip:</strong> ${prediction}</p>
+      <p><strong>Kick-off:</strong> ${match.fixture.date.split('T')[0]} ${match.fixture.date.split('T')[1].slice(0, 5)}</p>
+      <p><strong>Confidence:</strong> ${confidence}%</p>
+    </div>
+  `;
+}
+
+function formatLiveGame(match) {
+  const time = match.fixture.status.elapsed || 0;
+  return `
+    <div class="liveCard">
+      <h4>${match.teams.home.name} ${match.goals.home} - ${match.goals.away} ${match.teams.away.name}</h4>
+      <p><strong>Time:</strong> ${time}'</p>
+      <p><strong>Status:</strong> ${match.fixture.status.long}</p>
+    </div>
+  `;
+}
+
+async function loadLiveScores() {
+  showLoading('liveGames', 'Loading live matches...');
+  const matches = await fetchAPI('fixtures?live=all');
+  const html = matches.length
+    ? matches.map(formatLiveGame).join('')
+    : '<p>No live matches currently.</p>';
+  document.getElementById('liveGames').innerHTML = html;
+}
+
+async function loadPredictions(id, startOffset, endOffset, maxTips) {
+  showLoading(id, 'Generating tips...');
+  let tips = [];
+  for (let i = startOffset; i <= endOffset; i++) {
+    const date = getDateString(i);
+    const fixtures = await fetchAPI(`fixtures?date=${date}`);
+    for (const match of fixtures) {
+      if (!match.teams.home.winner && !match.teams.away.winner) {
+        const homeForm = match.teams.home.league?.form?.length || 2;
+        const awayForm = match.teams.away.league?.form?.length || 2;
+        const prediction = homeForm > awayForm ? "Home Win" : "Double Chance";
+        const confidence = getConfidence(homeForm, awayForm);
+        tips.push(formatPrediction(match, prediction, confidence));
+        if (tips.length >= maxTips) break;
       }
-      box.innerHTML = data.response
-        .map((match) => {
-          const teams = match.teams;
-          return `<div class="match">
-            <strong>${teams.home.name}</strong> ${match.goals.home} - ${match.goals.away} <strong>${teams.away.name}</strong>
-            <br/><small>Status: ${match.fixture.status.long}</small>
-          </div>`;
-        })
-        .join("");
-    })
-    .catch(() => {
-      document.getElementById("liveBox").innerText = "Failed to load live scores.";
-    });
-}
-
-// Get fixtures for today + next 3 days
-function getUpcomingFixtures(callback) {
-  const today = new Date();
-  const endDate = new Date();
-  endDate.setDate(today.getDate() + 3);
-
-  const from = today.toISOString().split("T")[0];
-  const to = endDate.toISOString().split("T")[0];
-
-  const url = `${BASE_URL}/fixtures?date=${from}&to=${to}`;
-
-  fetch(url, { headers })
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.response && data.response.length > 0) {
-        callback(data.response);
-      } else {
-        callback([]);
-      }
-    })
-    .catch(() => callback([]));
-}
-
-// Generate prediction logic (dummy scoring)
-function smartPredict(fixtures, oddsTarget = 3) {
-  let confidentGames = fixtures.filter((f) => {
-    const form = f.teams.home?.form || "WWDLW";
-    const wins = (form.match(/W/g) || []).length;
-    return wins >= 3 && f.teams.away?.form?.includes("L");
-  });
-  return confidentGames.slice(0, 5).map((match) => {
-    return {
-      text: `${match.teams.home.name} to win vs ${match.teams.away.name}`,
-      fixture: match,
-    };
-  });
-}
-
-function fetchDailyTips() {
-  getUpcomingFixtures((fixtures) => {
-    const dailyTips = smartPredict(fixtures);
-    const box = document.getElementById("dailyBox");
-    if (dailyTips.length === 0) {
-      box.innerHTML = "No strong daily tips available.";
-      return;
     }
-    box.innerHTML = dailyTips.map((tip) => `<div class='tip'>✅ ${tip.text}</div>`).join("");
-  });
+    if (tips.length >= maxTips) break;
+  }
+  document.getElementById(id).innerHTML = tips.length ? tips.join('') : '<p>No strong predictions available.</p>';
 }
 
-function fetchBiWeeklyAccumulator() {
-  getUpcomingFixtures((fixtures) => {
-    const filtered = fixtures.filter((f) => {
-      const date = new Date(f.fixture.date);
-      const day = date.getUTCDay();
-      return [2, 3, 4, 5, 6, 0].includes(day); // Tue - Sun
-    });
-    const accTips = smartPredict(filtered, 40);
-    const box = document.getElementById("biweeklyBox");
-    if (accTips.length === 0) {
-      box.innerHTML = "No bi-weekly accumulator found.";
-      return;
-    }
-    box.innerHTML = accTips.map((tip) => `<div class='tip'>🔥 ${tip.text}</div>`).join("");
-  });
+async function loadApp() {
+  loadLiveScores();
+  loadPredictions('dailyTips', 0, 0, 3);        // Today: max 3 tips
+  loadPredictions('biweeklyTips', 0, 3, 8);     // Next 3 days: max 8 tips
+  loadPredictions('weeklyTips', 0, 5, 15);      // Weekly: max 15 tips
 }
 
-function fetchWeeklyAccumulator() {
-  getUpcomingFixtures((fixtures) => {
-    const megaTips = smartPredict(fixtures, 1500);
-    const box = document.getElementById("weeklyBox");
-    if (megaTips.length === 0) {
-      box.innerHTML = "No weekly mega tips found.";
-      return;
-    }
-    box.innerHTML = megaTips.map((tip) => `<div class='tip'>💥 ${tip.text}</div>`).join("");
-  });
-}
+loadApp();
