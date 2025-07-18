@@ -1,105 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SureKick AI</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #0b0f1a;
-      color: #e0e0e0;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #1a1f2e;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-      color: #00f7ff;
-      font-weight: bold;
-      border-bottom: 2px solid #00f7ff;
-    }
-    nav {
-      display: flex;
-      justify-content: space-around;
-      background-color: #101522;
-      padding: 0.8rem;
-      border-bottom: 1px solid #2c2c3e;
-    }
-    nav button {
-      background-color: #101522;
-      border: none;
-      color: #00f7ff;
-      font-size: 1rem;
-      cursor: pointer;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      transition: background 0.3s;
-    }
-    nav button.active, nav button:hover {
-      background-color: #00f7ff;
-      color: #000;
-    }
-    .screen {
-      display: none;
-      padding: 1rem;
-    }
-    .screen.active {
-      display: block;
-    }
-    .card {
-      background-color: #1a1f2e;
-      margin: 1rem 0;
-      padding: 1rem;
-      border-left: 4px solid #00f7ff;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,247,255,0.1);
-    }
-    ul {
-      padding-left: 1rem;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SureKick AI - Smart Predictions</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="icon" type="image/png" href="logo.png">
 </head>
 <body>
-  <header>SureKick AI ⚽</header>
+  <header>
+    <img src="logo.png" alt="SureKick AI Logo" class="logo"/>
+    <h1>SureKick AI</h1>
+    <p class="tagline">Smarter Football Predictions</p>
+  </header>
+
   <nav>
-    <button onclick="switchTab('live')" class="active">Live Scores</button>
-    <button onclick="switchTab('daily')">Daily 3 Odds</button>
-    <button onclick="switchTab('biweekly')">25-40 Odds</button>
-    <button onclick="switchTab('weekly')">1500 Odds</button>
+    <button class="tab active" onclick="switchTab('live')">Live Scores</button>
+    <button class="tab" onclick="switchTab('daily')">Daily Tips</button>
+    <button class="tab" onclick="switchTab('biweekly')">Bi-weekly Accumulator</button>
+    <button class="tab" onclick="switchTab('weekly')">Weekly Mega Accumulator</button>
   </nav>
 
-  <div id="live" class="screen active">
-    <h2>Live Scores</h2>
-    <div id="liveScores">Loading...</div>
-  </div>
+  <main>
+    <section id="live" class="content active">
+      <h2>📡 Live Match Scores</h2>
+      <div id="liveBox" class="card">Loading live scores...</div>
+    </section>
 
-  <div id="daily" class="screen">
-    <h2>Daily 3 Odds Accumulator</h2>
-    <div id="dailyOdds">Loading...</div>
-  </div>
+    <section id="daily" class="content">
+      <h2>🔍 SureKick Daily 3-Odds Tips</h2>
+      <div id="dailyBox" class="card">Loading daily tips...</div>
+    </section>
 
-  <div id="biweekly" class="screen">
-    <h2>Bi-Weekly 25–40 Odds Accumulator</h2>
-    <div id="biWeeklyOdds">Loading...</div>
-  </div>
+    <section id="biweekly" class="content">
+      <h2>🚀 Bi-weekly 25–40 Odds Accumulator</h2>
+      <div id="biweeklyBox" class="card">Loading bi-weekly accumulator...</div>
+    </section>
 
-  <div id="weekly" class="screen">
-    <h2>Weekly 1500 Odds Accumulator</h2>
-    <div id="weeklyOdds">Loading...</div>
-  </div>
+    <section id="weekly" class="content">
+      <h2>💣 Weekly 1500 Odds Mega Accumulator</h2>
+      <div id="weeklyBox" class="card">Loading weekly accumulator...</div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 SureKick AI | Smart football analytics for winning bets</p>
+  </footer>
 
   <script src="script.js"></script>
-  <script>
-    function switchTab(tabId) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      event.target.classList.add('active');
-    }
-  </script>
 </body>
 </html>
+
 
