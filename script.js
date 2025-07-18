@@ -1,105 +1,149 @@
-// SureKick AI - Updated Script for Predictions and Accumulators
+// SureKick AI - Multi-Screen Prediction Engine
 
-const API_KEY = '02a00468ecc46837206bb0c35f091625';
-const API_HOST = 'https://www.api-football.com/';
-const DAYS_AHEAD = 15;
-
-async function fetchFixtures() {
-  const now = new Date();
-  const toDate = new Date();
-  toDate.setDate(now.getDate() + DAYS_AHEAD);
-
-  const from = now.toISOString().split('T')[0];
-  const to = toDate.toISOString().split('T')[0];
-
-  const url = `${API_HOST}/fixtures?date=${from}&to=${to}`;
-  const options = {
-    method: 'GET',
-    headers: {
-      'x-apisports-key': 02a00468ecc46837206bb0c35f091625
-    }
-  };
-
-  try {
-    const res = await fetch(url, options);
-    const data = await res.json();
-    if (!data.response || data.response.length === 0) {
-      document.getElementById('oddsBox').innerHTML = 'No upcoming fixtures.';
-      return;
-    }
-    await generatePredictions(data.response);
-  } catch (err) {
-    document.getElementById('oddsBox').innerHTML = 'Failed to load predictions.';
-    console.error(err);
-  }
-}
-
-async function fetchLastMatches(teamId) {
-  const url = `${API_HOST}/teams/statistics?season=2024&team=${teamId}`;
-  const options = {
-    method: 'GET',
-    headers: {
-      'x-apisports-key': 02a00468ecc46837206bb0c35f091625
-    }
-  };
-  try {
-    const res = await fetch(url, options);
-    return await res.json();
-  } catch (err) {
-    console.error('Failed to fetch stats for team ' + teamId);
-    return null;
-  }
-}
-
-async function generatePredictions(fixtures) {
-  const container = document.getElementById('oddsBox');
-  container.innerHTML = '<h3>SureKick AI Predictions</h3>';
-  const accTips = [];
-
-  for (const fix of fixtures) {
-    const home = fix.teams.home;
-    const away = fix.teams.away;
-
-    const homeStats = await fetchLastMatches(home.id);
-    const awayStats = await fetchLastMatches(away.id);
-    if (!homeStats || !awayStats) continue;
-
-    const homeWinRate = homeStats.response.form?.split('').filter(c => c === 'W').length / homeStats.response.form.length || 0;
-    const awayWinRate = awayStats.response.form?.split('').filter(c => c === 'W').length / awayStats.response.form.length || 0;
-
-    let prediction = 'Draw';
-    if (homeWinRate > awayWinRate + 0.2) prediction = 'Home Win';
-    else if (awayWinRate > homeWinRate + 0.2) prediction = 'Away Win';
-
-    const confidence = Math.round(Math.max(homeWinRate, awayWinRate) * 100);
-
-    const text = `⚽ ${home.name} vs ${away.name}<br>
-    ✅ Prediction: <strong>${prediction}</strong><br>
-    🔢 Confidence: <strong>${confidence}%</strong><br>
-    📊 Market: Win/Draw/Loss`;
-
-    const tip = `<div class='card'>${text}</div>`;
-    container.innerHTML += tip;
-
-    if (confidence >= 75) accTips.push(`${home.name} vs ${away.name} - ${prediction} (${confidence}%)`);
-  }
-
-  // Add accumulator tips
-  if (accTips.length) {
-    container.innerHTML += `<div class='card'>
-      <h4>🔥 SureKick AI Accumulator</h4>
-      <ul>${accTips.map(t => `<li>${t}</li>`).join('')}</ul>
-    </div>`;
-  }
-}
+const API_KEY = '9f0af8032a630bf720551c3c38b78057';
+const API_HOST = 'https://v3.football.api-sports.io';
+const DAYS_AHEAD = 3;
 
 function switchTab(tabId) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   document.querySelectorAll(".content").forEach(c => c.classList.remove("active"));
   document.getElementById(tabId).classList.add("active");
   event.target.classList.add("active");
+
+  if (tabId === 'live') fetchLiveGames();
+  else if (tabId === 'daily') fetchFixtures('daily');
+  else if (tabId === 'biweekly') fetchFixtures('biweekly');
+  else if (tabId === 'weekly') fetchFixtures('weekly');
+}
+
+async function fetchLiveGames() {
+  const container = document.getElementById('live');
+  container.innerHTML = '<h3>Live Scores</h3>';
+
+  try {
+    const res = await fetch(`${API_HOST}/fixtures?live=all`, {
+      method: 'GET',
+      headers: { 'x-apisports-key': API_KEY }
+    });
+    const data = await res.json();
+    if (!data.response.length) {
+      container.innerHTML += 'No live matches right now.';
+      return;
+    }
+
+    data.response.forEach(fix => {
+      container.innerHTML += `<div class='card'>
+        ${fix.teams.home.name} ${fix.goals.home} - ${fix.goals.away} ${fix.teams.away.name}
+        <br><small>Status: ${fix.fixture.status.short}</small></div>`;
+    });
+  } catch (err) {
+    container.innerHTML += 'Failed to load live scores.';
+  }
+}
+
+async function fetchFixtures(type) {
+  const container = document.getElementById(type);
+  container.innerHTML = `<h3>${getTitle(type)}</h3>`;
+
+  const now = new Date();
+  const to = new Date();
+  to.setDate(now.getDate() + (type === 'daily' ? 3 : 10));
+  const from = now.toISOString().split('T')[0];
+  const toDate = to.toISOString().split('T')[0];
+
+  try {
+    const res = await fetch(`${API_HOST}/fixtures?from=${from}&to=${toDate}`, {
+      method: 'GET',
+      headers: { 'x-apisports-key': API_KEY }
+    });
+    const data = await res.json();
+
+    if (!data.response.length) {
+      container.innerHTML += 'No upcoming fixtures.';
+      return;
+    }
+
+    let acc = [];
+    for (const fix of data.response.slice(0, 25)) {
+      const pred = await predictMatch(fix);
+      if (pred) {
+        container.innerHTML += `<div class='card'>${pred.text}</div>`;
+        if (pred.confidence >= getMinConfidence(type)) acc.push(pred.summary);
+      }
+    }
+
+    if (acc.length) {
+      container.innerHTML += `<div class='card'>
+        <h4>🔥 SureKick AI Accumulator</h4>
+        <ul>${acc.map(t => `<li>${t}</li>`).join('')}</ul>
+      </div>`;
+    }
+  } catch (err) {
+    container.innerHTML += 'Prediction load failed.';
+  }
+}
+
+async function predictMatch(fix) {
+  const homeId = fix.teams.home.id;
+  const awayId = fix.teams.away.id;
+
+  try {
+    const [homeStats, awayStats] = await Promise.all([
+      fetchTeamForm(homeId),
+      fetchTeamForm(awayId)
+    ]);
+    if (!homeStats || !awayStats) return null;
+
+    const homeWinRate = calcWinRate(homeStats);
+    const awayWinRate = calcWinRate(awayStats);
+
+    let prediction = 'Draw';
+    if (homeWinRate > awayWinRate + 0.2) prediction = 'Home Win';
+    else if (awayWinRate > homeWinRate + 0.2) prediction = 'Away Win';
+
+    const confidence = Math.round(Math.max(homeWinRate, awayWinRate) * 100);
+    const summary = `${fix.teams.home.name} vs ${fix.teams.away.name} - ${prediction} (${confidence}%)`;
+
+    return {
+      text: `⚽ ${fix.teams.home.name} vs ${fix.teams.away.name}<br>
+        ✅ Prediction: <strong>${prediction}</strong><br>
+        🔢 Confidence: <strong>${confidence}%</strong><br>
+        📊 Market: Win/Draw/Loss`,
+      confidence,
+      summary
+    };
+  } catch {
+    return null;
+  }
+}
+
+function getTitle(type) {
+  return type === 'daily' ? 'Daily 3-Odd Predictions'
+    : type === 'biweekly' ? 'Bi-Weekly 25–40 Odds'
+    : 'Weekly 1500 Odds';
+}
+
+function getMinConfidence(type) {
+  return type === 'daily' ? 85 : type === 'biweekly' ? 75 : 65;
+}
+
+function calcWinRate(stats) {
+  return stats.split('').filter(c => c === 'W').length / stats.length;
+}
+
+async function fetchTeamForm(teamId) {
+  try {
+    const res = await fetch(`${API_HOST}/teams/statistics?season=2024&team=${teamId}`, {
+      method: 'GET',
+      headers: { 'x-apisports-key': API_KEY }
+    });
+    const data = await res.json();
+    return data.response.form || '';
+  } catch {
+    return '';
+  }
 }
 
 window.onload = () => {
-  fetchFixtures();
+  fetchLiveGames();
 };
