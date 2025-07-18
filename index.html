@@ -2,99 +2,104 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SureKick AI - Football Predictions</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <title>SureKick AI</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f9f9f9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #0b0f1a;
+      color: #e0e0e0;
       margin: 0;
-      padding: 20px;
-      color: #333;
+      padding: 0;
     }
-
     header {
+      background-color: #1a1f2e;
+      padding: 1rem;
       text-align: center;
-      padding: 20px 0;
+      font-size: 1.5rem;
+      color: #00f7ff;
+      font-weight: bold;
+      border-bottom: 2px solid #00f7ff;
     }
-
-    h1 {
-      font-size: 28px;
-      color: #2c3e50;
-      margin-bottom: 10px;
+    nav {
+      display: flex;
+      justify-content: space-around;
+      background-color: #101522;
+      padding: 0.8rem;
+      border-bottom: 1px solid #2c2c3e;
     }
-
-    .predictions-container {
-      max-width: 800px;
-      margin: 0 auto;
+    nav button {
+      background-color: #101522;
+      border: none;
+      color: #00f7ff;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      transition: background 0.3s;
     }
-
+    nav button.active, nav button:hover {
+      background-color: #00f7ff;
+      color: #000;
+    }
+    .screen {
+      display: none;
+      padding: 1rem;
+    }
+    .screen.active {
+      display: block;
+    }
     .card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 15px 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-      transition: all 0.3s ease;
+      background-color: #1a1f2e;
+      margin: 1rem 0;
+      padding: 1rem;
+      border-left: 4px solid #00f7ff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,247,255,0.1);
     }
-
-    .card:hover {
-      transform: scale(1.02);
-      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
-    }
-
-    h3, h4 {
-      margin-bottom: 12px;
-      color: #34495e;
-    }
-
     ul {
-      padding-left: 20px;
-      margin-top: 10px;
-    }
-
-    li {
-      margin-bottom: 6px;
-    }
-
-    .footer {
-      text-align: center;
-      font-size: 14px;
-      margin-top: 40px;
-      color: #aaa;
-    }
-
-    @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-
-      .card {
-        padding: 12px 15px;
-      }
-
-      h1 {
-        font-size: 22px;
-      }
+      padding-left: 1rem;
     }
   </style>
 </head>
 <body>
+  <header>SureKick AI ⚽</header>
+  <nav>
+    <button onclick="switchTab('live')" class="active">Live Scores</button>
+    <button onclick="switchTab('daily')">Daily 3 Odds</button>
+    <button onclick="switchTab('biweekly')">25-40 Odds</button>
+    <button onclick="switchTab('weekly')">1500 Odds</button>
+  </nav>
 
-  <header>
-    <h1>⚽ SureKick AI</h1>
-    <p>Smart predictions powered by match stats and team form.</p>
-  </header>
-
-  <div id="oddsBox" class="predictions-container">
-    <div class="card">Loading predictions for today and the next 3 days...</div>
+  <div id="live" class="screen active">
+    <h2>Live Scores</h2>
+    <div id="liveScores">Loading...</div>
   </div>
 
-  <div class="footer">
-    &copy; 2025 SureKick AI. All rights reserved.
+  <div id="daily" class="screen">
+    <h2>Daily 3 Odds Accumulator</h2>
+    <div id="dailyOdds">Loading...</div>
+  </div>
+
+  <div id="biweekly" class="screen">
+    <h2>Bi-Weekly 25–40 Odds Accumulator</h2>
+    <div id="biWeeklyOdds">Loading...</div>
+  </div>
+
+  <div id="weekly" class="screen">
+    <h2>Weekly 1500 Odds Accumulator</h2>
+    <div id="weeklyOdds">Loading...</div>
   </div>
 
   <script src="script.js"></script>
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      event.target.classList.add('active');
+    }
+  </script>
 </body>
 </html>
+
