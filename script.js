@@ -1,103 +1,118 @@
-const apiKey = '9f0af8032a630bf720551c3c38b78057';
+// --- SureKick AI v2 Script.js ---
+
+const apiKey = "9f0af8032a630bf720551c3c38b78057";
+const baseUrl = "https://v3.football.api-sports.io";
 const headers = {
-  'X-RapidAPI-Key': apiKey,
-  'X-RapidAPI-Host': 'v3.football.api-sports.io',
+  method: "GET",
+  headers: {
+    "x-apisports-key": apiKey
+  }
 };
 
-const today = new Date();
-const getDateString = (offsetDays) => {
-  const date = new Date();
-  date.setDate(today.getDate() + offsetDays);
-  return date.toISOString().split('T')[0];
-};
+// Utility: Fetch upcoming fixtures from tomorrow +2 days
+async function getUpcomingFixtures(daysAhead = 3) {
+  const today = new Date();
+  today.setDate(today.getDate() + 1); // Start from tomorrow
+  const start = today.toISOString().split("T")[0];
+  today.setDate(today.getDate() + daysAhead);
+  const end = today.toISOString().split("T")[0];
 
-async function fetchAPI(endpoint) {
+  const url = `${baseUrl}/fixtures?date=${start}&to=${end}`;
+  const res = await fetch(url, headers);
+  const data = await res.json();
+  return data.response || [];
+}
+
+function calculateConfidence(match) {
+  let confidence = 60;
+
+  // Boost confidence based on ranking or form (mock logic)
+  const homeWinChance = Math.random() * 20;
+  const awayWinChance = Math.random() * 20;
+
+  if (homeWinChance > awayWinChance) confidence += 10;
+  if (match.teams.home.name.length > match.teams.away.name.length) confidence += 5;
+  if (confidence > 90) confidence = 90;
+
+  return Math.round(confidence);
+}
+
+function generatePrediction(match) {
+  const confidence = calculateConfidence(match);
+  const goalsExpected = Math.random() * 5;
+  const markets = [];
+
+  if (goalsExpected > 3.5) markets.push("Over 3.5 Goals");
+  else if (goalsExpected > 2.5) markets.push("Over 2.5 Goals");
+  else markets.push("Under 2.5 Goals");
+
+  const doubleChanceTeam = Math.random() > 0.5 ? match.teams.home.name : match.teams.away.name;
+  markets.push(`Double Chance (${doubleChanceTeam} Win or Draw)`);
+
+  const prediction = {
+    fixture: match.fixture,
+    home: match.teams.home.name,
+    away: match.teams.away.name,
+    prediction: markets.join(" + "),
+    confidence
+  };
+
+  return prediction;
+}
+
+async function loadPredictions() {
+  const container = document.getElementById("predictions");
+  container.innerHTML = "<p>Loading predictions...</p>";
+
   try {
-    const res = await fetch(`https://v3.football.api-sports.io/${endpoint}`, { headers });
-    const data = await res.json();
-    return data.response || [];
-  } catch (error) {
-    console.error('API error:', error);
-    return [];
+    const matches = await getUpcomingFixtures();
+    const tips = matches.slice(0, 10).map(generatePrediction);
+
+    container.innerHTML = tips.map(t => `
+      <div class="tip">
+        <strong>${t.home} vs ${t.away}</strong><br>
+        Prediction: ${t.prediction}<br>
+        Confidence: ${t.confidence}%
+      </div>
+    `).join("");
+  } catch (err) {
+    container.innerHTML = "<p>Failed to load predictions.</p>";
   }
 }
 
-function showLoading(id, message = 'Loading...') {
-  document.getElementById(id).innerHTML = `<p>${message}</p>`;
-}
-
-function switchTab(tabId, e) {
-  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  e.target.classList.add('active');
-}
-
-function getConfidence(home, away) {
-  const diff = home - away;
-  if (diff > 1.5) return 90;
-  if (diff > 1) return 80;
-  if (diff > 0.5) return 70;
-  return 60;
-}
-
-function formatPrediction(match, prediction, confidence) {
-  return `
-    <div class="matchCard">
-      <h4>${match.teams.home.name} vs ${match.teams.away.name}</h4>
-      <p><strong>Tip:</strong> ${prediction}</p>
-      <p><strong>Kick-off:</strong> ${match.fixture.date.split('T')[0]} ${match.fixture.date.split('T')[1].slice(0, 5)}</p>
-      <p><strong>Confidence:</strong> ${confidence}%</p>
-    </div>
-  `;
-}
-
-function formatLiveGame(match) {
-  const time = match.fixture.status.elapsed || 0;
-  return `
-    <div class="liveCard">
-      <h4>${match.teams.home.name} ${match.goals.home} - ${match.goals.away} ${match.teams.away.name}</h4>
-      <p><strong>Time:</strong> ${time}'</p>
-      <p><strong>Status:</strong> ${match.fixture.status.long}</p>
-    </div>
-  `;
-}
-
+// Load Live Scores
 async function loadLiveScores() {
-  showLoading('liveGames', 'Loading live matches...');
-  const matches = await fetchAPI('fixtures?live=all');
-  const html = matches.length
-    ? matches.map(formatLiveGame).join('')
-    : '<p>No live matches currently.</p>';
-  document.getElementById('liveGames').innerHTML = html;
-}
+  const res = await fetch(`${baseUrl}/fixtures?live=all`, headers);
+  const data = await res.json();
+  const matches = data.response || [];
+  const container = document.getElementById("live");
 
-async function loadPredictions(id, startOffset, endOffset, maxTips) {
-  showLoading(id, 'Generating tips...');
-  let tips = [];
-  for (let i = startOffset; i <= endOffset; i++) {
-    const date = getDateString(i);
-    const fixtures = await fetchAPI(`fixtures?date=${date}`);
-    for (const match of fixtures) {
-      if (!match.teams.home.winner && !match.teams.away.winner) {
-        const homeForm = match.teams.home.league?.form?.length || 2;
-        const awayForm = match.teams.away.league?.form?.length || 2;
-        const prediction = homeForm > awayForm ? "Home Win" : "Double Chance";
-        const confidence = getConfidence(homeForm, awayForm);
-        tips.push(formatPrediction(match, prediction, confidence));
-        if (tips.length >= maxTips) break;
-      }
-    }
-    if (tips.length >= maxTips) break;
+  if (matches.length === 0) {
+    container.innerHTML = "<p>No live matches.</p>";
+    return;
   }
-  document.getElementById(id).innerHTML = tips.length ? tips.join('') : '<p>No strong predictions available.</p>';
+
+  container.innerHTML = matches.map(m => `
+    <div class="live">
+      <strong>${m.teams.home.name} ${m.goals.home} - ${m.goals.away} ${m.teams.away.name}</strong><br>
+      Status: ${m.fixture.status.elapsed}'
+    </div>
+  `).join("");
 }
 
-async function loadApp() {
-  loadLiveScores();
-  loadPredictions('dailyTips', 0, 0, 3);        // Today: max 3 tips
-  loadPredictions('biweeklyTips', 0, 3, 8);     // Next 3 days: max 8 tips
-  loadPredictions('weeklyTips', 0, 5, 15);      // Weekly: max 15 tips
-}
+window.onload = () => {
+  const page = document.body.dataset.page;
 
-loadApp();
+  switch (page) {
+    case "live":
+      loadLiveScores();
+      break;
+    case "daily":
+      loadPredictions();
+      break;
+    case "weekly":
+    case "mega":
+      loadPredictions(); // reuse base prediction logic for now
+      break;
+  }
+};
