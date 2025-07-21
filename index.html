@@ -1,120 +1,104 @@
-// SureKick AI - Smart Prediction Engine with Expanded Markets and Better Accuracy
+<!DOCTYPE html>
+<html lang="en">
 
-const API_KEY = '9f0af8032a630bf720551c3c38b78057';
-const API_HOST = 'https://v3.football.api-sports.io';
-const DAYS_AHEAD = 1; // predict matches 1 day before
-
-async function fetchFixtures() {
-  const now = new Date();
-  const target = new Date();
-  target.setDate(now.getDate() + DAYS_AHEAD);
-
-  const dateStr = target.toISOString().split('T')[0];
-  const url = `${API_HOST}/fixtures?date=${dateStr}`;
-
-  const options = {
-    method: 'GET',
-    headers: {
-      'x-apisports-key': API_KEY
-    }
-  };
-
-  try {
-    const res = await fetch(url, options);
-    const data = await res.json();
-    if (!data.response || data.response.length === 0) {
-      document.getElementById('oddsBox').innerHTML = 'No upcoming fixtures.';
-      return;
-    }
-    await generatePredictions(data.response);
-  } catch (err) {
-    document.getElementById('oddsBox').innerHTML = 'Failed to load predictions.';
-    console.error(err);
-  }
-}
-
-async function fetchTeamStats(teamId) {
-  const url = `${API_HOST}/teams/statistics?season=2024&team=${teamId}&league=39`;
-  const options = {
-    method: 'GET',
-    headers: {
-      'x-apisports-key': API_KEY
-    }
-  };
-  try {
-    const res = await fetch(url, options);
-    return await res.json();
-  } catch (err) {
-    console.error('Failed to fetch team stats', err);
-    return null;
-  }
-}
-
-function determineConfidence(homeWinRate, awayWinRate) {
-  const diff = Math.abs(homeWinRate - awayWinRate);
-  if (diff > 0.4) return 90;
-  if (diff > 0.3) return 85;
-  if (diff > 0.2) return 75;
-  return 60;
-}
-
-async function generatePredictions(fixtures) {
-  const container = document.getElementById('oddsBox');
-  container.innerHTML = '<h3>SureKick AI Predictions (Tomorrow)</h3>';
-
-  for (const fix of fixtures) {
-    const home = fix.teams.home;
-    const away = fix.teams.away;
-
-    const homeStats = await fetchTeamStats(home.id);
-    const awayStats = await fetchTeamStats(away.id);
-    if (!homeStats || !awayStats) continue;
-
-    const homeForm = homeStats.response.form || '';
-    const awayForm = awayStats.response.form || '';
-    const homeWins = homeForm.split('').filter(c => c === 'W').length;
-    const awayWins = awayForm.split('').filter(c => c === 'W').length;
-
-    const homeWinRate = homeWins / homeForm.length || 0;
-    const awayWinRate = awayWins / awayForm.length || 0;
-
-    let prediction = '';
-    let market = '';
-    const confidence = determineConfidence(homeWinRate, awayWinRate);
-
-    if (homeWinRate > awayWinRate + 0.25) {
-      prediction = `Double Chance: ${home.name} or Draw`;
-      market = 'Double Chance';
-    } else if (awayWinRate > homeWinRate + 0.25) {
-      prediction = `Double Chance: ${away.name} or Draw`;
-      market = 'Double Chance';
-    } else if (homeWinRate + awayWinRate > 0.9) {
-      prediction = 'Over 2.5 Goals';
-      market = 'Total Goals';
-    } else {
-      prediction = 'Under 2.5 Goals';
-      market = 'Total Goals';
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SureKick AI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      margin: 0;
+      padding: 0;
     }
 
-    container.innerHTML += `
-      <div class='card'>
-        ⚽ ${home.name} vs ${away.name}<br>
-        ✅ Prediction: <strong>${prediction}</strong><br>
-        📊 Market: <strong>${market}</strong><br>
-        🔢 Confidence Score: <strong>${confidence}%</strong><br>
-        🗓️ Match Day: ${fix.fixture.date.split('T')[0]}
-      </div>
-    `;
-  }
-}
+    header {
+      background-color: #0d1117;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #00d8ff;
+    }
 
-function switchTab(tabId) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll(".content").forEach(c => c.classList.remove("active"));
-  document.getElementById(tabId).classList.add("active");
-  event.target.classList.add("active");
-}
+    nav {
+      display: flex;
+      justify-content: space-around;
+      background-color: #161b22;
+      padding: 0.5rem 0;
+    }
 
-window.onload = () => {
-  fetchFixtures();
-};
+    .tab {
+      color: #c9d1d9;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .tab.active {
+      color: #00d8ff;
+      font-weight: bold;
+      border-bottom: 2px solid #00d8ff;
+    }
+
+    .content {
+      display: none;
+      padding: 1rem;
+    }
+
+    .content.active {
+      display: block;
+    }
+
+    .card {
+      background-color: #1e2329;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h4 {
+      color: #00d8ff;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      padding: 0.25rem 0;
+    }
+  </style>
+</head>
+
+<body>
+  <header>SureKick AI ⚽</header>
+  <nav>
+    <div class="tab active" onclick="switchTab('live')">Live Scores</div>
+    <div class="tab" onclick="switchTab('daily')">3-Odd Daily</div>
+    <div class="tab" onclick="switchTab('weekly')">25–40 Odds</div>
+    <div class="tab" onclick="switchTab('mega')">1500 Odds</div>
+  </nav>
+
+  <main>
+    <section id="live" class="content active">
+      <div id="liveBox">Loading live matches...</div>
+    </section>
+    <section id="daily" class="content">
+      <div id="dailyBox">Loading daily predictions...</div>
+    </section>
+    <section id="weekly" class="content">
+      <div id="weeklyBox">Loading weekly accumulator...</div>
+    </section>
+    <section id="mega" class="content">
+      <div id="megaBox">Loading 1500 odds accumulator...</div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
