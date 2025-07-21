@@ -1,118 +1,150 @@
-// --- SureKick AI v2 Script.js ---
+// SureKick AI - Enhanced Predictions Script
 
-const apiKey = "9f0af8032a630bf720551c3c38b78057";
-const baseUrl = "https://v3.football.api-sports.io";
-const headers = {
-  method: "GET",
-  headers: {
-    "x-apisports-key": apiKey
-  }
-};
+const API_KEY = '9f0af8032a630bf720551c3c38b78057';
+const API_HOST = 'https://v3.football.api-sports.io';
+const DAYS_AHEAD = 1; // Predict matches 1 day in advance
 
-// Utility: Fetch upcoming fixtures from tomorrow +2 days
-async function getUpcomingFixtures(daysAhead = 3) {
-  const today = new Date();
-  today.setDate(today.getDate() + 1); // Start from tomorrow
-  const start = today.toISOString().split("T")[0];
-  today.setDate(today.getDate() + daysAhead);
-  const end = today.toISOString().split("T")[0];
+async function fetchFixtures() {
+  const now = new Date();
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + DAYS_AHEAD);
+  const dateStr = targetDate.toISOString().split('T')[0];
 
-  const url = `${baseUrl}/fixtures?date=${start}&to=${end}`;
-  const res = await fetch(url, headers);
-  const data = await res.json();
-  return data.response || [];
-}
-
-function calculateConfidence(match) {
-  let confidence = 60;
-
-  // Boost confidence based on ranking or form (mock logic)
-  const homeWinChance = Math.random() * 20;
-  const awayWinChance = Math.random() * 20;
-
-  if (homeWinChance > awayWinChance) confidence += 10;
-  if (match.teams.home.name.length > match.teams.away.name.length) confidence += 5;
-  if (confidence > 90) confidence = 90;
-
-  return Math.round(confidence);
-}
-
-function generatePrediction(match) {
-  const confidence = calculateConfidence(match);
-  const goalsExpected = Math.random() * 5;
-  const markets = [];
-
-  if (goalsExpected > 3.5) markets.push("Over 3.5 Goals");
-  else if (goalsExpected > 2.5) markets.push("Over 2.5 Goals");
-  else markets.push("Under 2.5 Goals");
-
-  const doubleChanceTeam = Math.random() > 0.5 ? match.teams.home.name : match.teams.away.name;
-  markets.push(`Double Chance (${doubleChanceTeam} Win or Draw)`);
-
-  const prediction = {
-    fixture: match.fixture,
-    home: match.teams.home.name,
-    away: match.teams.away.name,
-    prediction: markets.join(" + "),
-    confidence
+  const url = `${API_HOST}/fixtures?date=${dateStr}`;
+  const options = {
+    method: 'GET',
+    headers: {
+      'x-apisports-key': API_KEY
+    }
   };
 
-  return prediction;
+  try {
+    const res = await fetch(url, options);
+    const data = await res.json();
+    if (!data.response || data.response.length === 0) {
+      document.getElementById('dailyTips').innerHTML = 'No upcoming fixtures for tomorrow.';
+      return;
+    }
+    await generatePredictions(data.response);
+  } catch (err) {
+    document.getElementById('dailyTips').innerHTML = 'Failed to load predictions.';
+    console.error(err);
+  }
 }
 
-async function loadPredictions() {
-  const container = document.getElementById("predictions");
-  container.innerHTML = "<p>Loading predictions...</p>";
+async function fetchTeamStats(teamId) {
+  const url = `${API_HOST}/teams/statistics?season=2024&team=${teamId}&league=39`; // Premier League as example
+  const options = {
+    method: 'GET',
+    headers: {
+      'x-apisports-key': API_KEY
+    }
+  };
+  try {
+    const res = await fetch(url, options);
+    return await res.json();
+  } catch (err) {
+    console.error('Stats fetch failed for team:', teamId);
+    return null;
+  }
+}
+
+function calculateConfidence(winRate) {
+  if (winRate > 0.8) return 90;
+  if (winRate > 0.7) return 80;
+  if (winRate > 0.6) return 70;
+  if (winRate > 0.5) return 65;
+  return 60;
+}
+
+async function generatePredictions(fixtures) {
+  const container = document.getElementById('dailyTips');
+  container.innerHTML = '<h3>✅ Tomorrow's AI-Powered Predictions</h3>';
+
+  for (const fix of fixtures) {
+    const home = fix.teams.home;
+    const away = fix.teams.away;
+    const leagueId = fix.league.id;
+
+    const homeStats = await fetchTeamStats(home.id);
+    const awayStats = await fetchTeamStats(away.id);
+    if (!homeStats || !awayStats) continue;
+
+    const homeWins = homeStats.response.form?.split('').filter(c => c === 'W').length || 0;
+    const awayWins = awayStats.response.form?.split('').filter(c => c === 'W').length || 0;
+
+    const totalGames = homeStats.response.form?.length || 10;
+    const homeWinRate = homeWins / totalGames;
+    const awayWinRate = awayWins / totalGames;
+
+    let market = 'Double Chance';
+    let prediction = 'Draw or ';
+    let favoredTeam = '';
+
+    if (homeWinRate > awayWinRate) {
+      favoredTeam = home.name;
+      prediction += `${home.name}`;
+    } else {
+      favoredTeam = away.name;
+      prediction += `${away.name}`;
+    }
+
+    const over25 = homeStats.response.goals.for.total.total / totalGames + awayStats.response.goals.for.total.total / totalGames > 2.5;
+
+    const confidence = calculateConfidence(Math.max(homeWinRate, awayWinRate));
+    const tips = [];
+
+    tips.push(`⚽ <strong>${home.name} vs ${away.name}</strong>`);
+    tips.push(`✅ Prediction: <strong>${prediction}</strong> (Favored: ${favoredTeam})`);
+    tips.push(`📊 Market: <strong>${market}</strong>`);
+    tips.push(`🎯 Confidence: <strong>${confidence}%</strong>`);
+    if (over25) tips.push('🔥 Suggested Bet: <strong>Over 2.5 Goals</strong>');
+
+    container.innerHTML += `<div class='card'>${tips.join('<br>')}</div>`;
+  }
+}
+
+async function fetchLiveScores() {
+  const url = `${API_HOST}/fixtures?live=all`;
+  const options = {
+    method: 'GET',
+    headers: {
+      'x-apisports-key': API_KEY
+    }
+  };
 
   try {
-    const matches = await getUpcomingFixtures();
-    const tips = matches.slice(0, 10).map(generatePrediction);
+    const res = await fetch(url, options);
+    const data = await res.json();
+    const container = document.getElementById('liveScores');
+    container.innerHTML = '<h3>⚽ Live Matches</h3>';
 
-    container.innerHTML = tips.map(t => `
-      <div class="tip">
-        <strong>${t.home} vs ${t.away}</strong><br>
-        Prediction: ${t.prediction}<br>
-        Confidence: ${t.confidence}%
-      </div>
-    `).join("");
+    if (!data.response.length) {
+      container.innerHTML += 'No live games currently.';
+      return;
+    }
+
+    for (const match of data.response) {
+      const home = match.teams.home.name;
+      const away = match.teams.away.name;
+      const score = `${match.goals.home} - ${match.goals.away}`;
+      const time = match.fixture.status.elapsed;
+      container.innerHTML += `<div class='card'>${home} vs ${away}<br>⏱ ${time}' | 🔢 ${score}</div>`;
+    }
   } catch (err) {
-    container.innerHTML = "<p>Failed to load predictions.</p>";
+    document.getElementById('liveScores').innerHTML = 'Live scores not available.';
+    console.error(err);
   }
 }
 
-// Load Live Scores
-async function loadLiveScores() {
-  const res = await fetch(`${baseUrl}/fixtures?live=all`, headers);
-  const data = await res.json();
-  const matches = data.response || [];
-  const container = document.getElementById("live");
-
-  if (matches.length === 0) {
-    container.innerHTML = "<p>No live matches.</p>";
-    return;
-  }
-
-  container.innerHTML = matches.map(m => `
-    <div class="live">
-      <strong>${m.teams.home.name} ${m.goals.home} - ${m.goals.away} ${m.teams.away.name}</strong><br>
-      Status: ${m.fixture.status.elapsed}'
-    </div>
-  `).join("");
+function switchTab(tabId) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".content").forEach(c => c.classList.remove("active"));
+  document.getElementById(tabId).classList.add("active");
+  event.target.classList.add("active");
 }
 
 window.onload = () => {
-  const page = document.body.dataset.page;
-
-  switch (page) {
-    case "live":
-      loadLiveScores();
-      break;
-    case "daily":
-      loadPredictions();
-      break;
-    case "weekly":
-    case "mega":
-      loadPredictions(); // reuse base prediction logic for now
-      break;
-  }
+  fetchFixtures();
+  fetchLiveScores();
 };
