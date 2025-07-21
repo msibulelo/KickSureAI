@@ -1,52 +1,120 @@
-<!DOCTYPE html>
-<html lang="en">
+// SureKick AI - Smart Prediction Engine with Expanded Markets and Better Accuracy
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SureKick AI</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
+const API_KEY = '9f0af8032a630bf720551c3c38b78057';
+const API_HOST = 'https://v3.football.api-sports.io';
+const DAYS_AHEAD = 1; // predict matches 1 day before
 
-<body>
-  <header>
-    <h1>SureKick AI</h1>
-    <nav>
-      <button class="tab active" onclick="switchTab('live')">Live Scores</button>
-      <button class="tab" onclick="switchTab('daily')">Daily 3-Odd Tips</button>
-      <button class="tab" onclick="switchTab('biweekly')">25–40 Odd Accumulator</button>
-      <button class="tab" onclick="switchTab('mega')">1500-Odd Mega Tips</button>
-    </nav>
-  </header>
+async function fetchFixtures() {
+  const now = new Date();
+  const target = new Date();
+  target.setDate(now.getDate() + DAYS_AHEAD);
 
-  <main>
-    <section id="live" class="content active">
-      <h2>Live Scores</h2>
-      <div id="liveScores">Loading...</div>
-    </section>
+  const dateStr = target.toISOString().split('T')[0];
+  const url = `${API_HOST}/fixtures?date=${dateStr}`;
 
-    <section id="daily" class="content">
-      <h2>Daily Predictions (for Tomorrow)</h2>
-      <div id="dailyPredictions">Loading...</div>
-    </section>
+  const options = {
+    method: 'GET',
+    headers: {
+      'x-apisports-key': API_KEY
+    }
+  };
 
-    <section id="biweekly" class="content">
-      <h2>25–40 Odds Accumulator</h2>
-      <div id="biweeklyPredictions">Loading...</div>
-    </section>
+  try {
+    const res = await fetch(url, options);
+    const data = await res.json();
+    if (!data.response || data.response.length === 0) {
+      document.getElementById('oddsBox').innerHTML = 'No upcoming fixtures.';
+      return;
+    }
+    await generatePredictions(data.response);
+  } catch (err) {
+    document.getElementById('oddsBox').innerHTML = 'Failed to load predictions.';
+    console.error(err);
+  }
+}
 
-    <section id="mega" class="content">
-      <h2>Weekly 1500-Odd Mega Tips</h2>
-      <div id="megaPredictions">Loading...</div>
-    </section>
-  </main>
+async function fetchTeamStats(teamId) {
+  const url = `${API_HOST}/teams/statistics?season=2024&team=${teamId}&league=39`;
+  const options = {
+    method: 'GET',
+    headers: {
+      'x-apisports-key': API_KEY
+    }
+  };
+  try {
+    const res = await fetch(url, options);
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch team stats', err);
+    return null;
+  }
+}
 
-  <footer>
-    <p>&copy; 2025 SureKick AI. All rights reserved.</p>
-  </footer>
+function determineConfidence(homeWinRate, awayWinRate) {
+  const diff = Math.abs(homeWinRate - awayWinRate);
+  if (diff > 0.4) return 90;
+  if (diff > 0.3) return 85;
+  if (diff > 0.2) return 75;
+  return 60;
+}
 
-  <script src="script.js"></script>
-</body>
+async function generatePredictions(fixtures) {
+  const container = document.getElementById('oddsBox');
+  container.innerHTML = '<h3>SureKick AI Predictions (Tomorrow)</h3>';
 
-</html>
+  for (const fix of fixtures) {
+    const home = fix.teams.home;
+    const away = fix.teams.away;
 
+    const homeStats = await fetchTeamStats(home.id);
+    const awayStats = await fetchTeamStats(away.id);
+    if (!homeStats || !awayStats) continue;
+
+    const homeForm = homeStats.response.form || '';
+    const awayForm = awayStats.response.form || '';
+    const homeWins = homeForm.split('').filter(c => c === 'W').length;
+    const awayWins = awayForm.split('').filter(c => c === 'W').length;
+
+    const homeWinRate = homeWins / homeForm.length || 0;
+    const awayWinRate = awayWins / awayForm.length || 0;
+
+    let prediction = '';
+    let market = '';
+    const confidence = determineConfidence(homeWinRate, awayWinRate);
+
+    if (homeWinRate > awayWinRate + 0.25) {
+      prediction = `Double Chance: ${home.name} or Draw`;
+      market = 'Double Chance';
+    } else if (awayWinRate > homeWinRate + 0.25) {
+      prediction = `Double Chance: ${away.name} or Draw`;
+      market = 'Double Chance';
+    } else if (homeWinRate + awayWinRate > 0.9) {
+      prediction = 'Over 2.5 Goals';
+      market = 'Total Goals';
+    } else {
+      prediction = 'Under 2.5 Goals';
+      market = 'Total Goals';
+    }
+
+    container.innerHTML += `
+      <div class='card'>
+        ⚽ ${home.name} vs ${away.name}<br>
+        ✅ Prediction: <strong>${prediction}</strong><br>
+        📊 Market: <strong>${market}</strong><br>
+        🔢 Confidence Score: <strong>${confidence}%</strong><br>
+        🗓️ Match Day: ${fix.fixture.date.split('T')[0]}
+      </div>
+    `;
+  }
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".content").forEach(c => c.classList.remove("active"));
+  document.getElementById(tabId).classList.add("active");
+  event.target.classList.add("active");
+}
+
+window.onload = () => {
+  fetchFixtures();
+};
