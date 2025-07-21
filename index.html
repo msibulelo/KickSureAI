@@ -1,49 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SureKick AI</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <header>
-    <img src="logo.png" alt="SureKick AI Logo" class="logo">
     <h1>SureKick AI</h1>
-    <p>Smart Football Predictions & Live Stats</p>
+    <nav>
+      <button class="tab active" onclick="switchTab('live')">Live Scores</button>
+      <button class="tab" onclick="switchTab('daily')">Daily 3-Odd Tips</button>
+      <button class="tab" onclick="switchTab('biweekly')">25–40 Odd Accumulator</button>
+      <button class="tab" onclick="switchTab('mega')">1500-Odd Mega Tips</button>
+    </nav>
   </header>
 
-  <nav class="tabs">
-    <button class="tab active" onclick="switchTab('liveTab', event)">Live Scores</button>
-    <button class="tab" onclick="switchTab('dailyTab', event)">3-Odd Predictions</button>
-    <button class="tab" onclick="switchTab('biweeklyTab', event)">25–40 Odds Accumulator</button>
-    <button class="tab" onclick="switchTab('weeklyTab', event)">1500-Odds Mega Accumulator</button>
-  </nav>
-
   <main>
-    <section id="liveTab" class="content active">
-      <div id="liveGames" class="sectionBox">Loading live scores...</div>
+    <section id="live" class="content active">
+      <h2>Live Scores</h2>
+      <div id="liveScores">Loading...</div>
     </section>
 
-    <section id="dailyTab" class="content">
-      <div id="dailyTips" class="sectionBox">Loading 3-odd predictions...</div>
+    <section id="daily" class="content">
+      <h2>Daily Predictions (for Tomorrow)</h2>
+      <div id="dailyPredictions">Loading...</div>
     </section>
 
-    <section id="biweeklyTab" class="content">
-      <div id="biweeklyTips" class="sectionBox">Loading 25–40 odds accumulator...</div>
+    <section id="biweekly" class="content">
+      <h2>25–40 Odds Accumulator</h2>
+      <div id="biweeklyPredictions">Loading...</div>
     </section>
 
-    <section id="weeklyTab" class="content">
-      <div id="weeklyTips" class="sectionBox">Loading 1500-odds accumulator...</div>
+    <section id="mega" class="content">
+      <h2>Weekly 1500-Odd Mega Tips</h2>
+      <div id="megaPredictions">Loading...</div>
     </section>
   </main>
 
   <footer>
-    <p>&copy; 2025 SureKick AI. Powered by real match data.</p>
+    <p>&copy; 2025 SureKick AI. All rights reserved.</p>
   </footer>
 
   <script src="script.js"></script>
 </body>
-</html>
 
+</html>
 
